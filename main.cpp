@@ -47,10 +47,10 @@ void huff(const string &filename_in)
 {
 	// Build the huffman tree
 	AsciiMap *histogram = fileHistogram(filename_in);
-	AsciiHuff *hufftree = asciiMap2Huff(*histogram);
+	HuffTree *hufftree = asciiMap2Huff(*histogram);
 	
 	// Make a mapping of characters to variable width codes
-	AsciiHuff::CodeMap *huffcodes = hufftree->generateHuffCodes();
+	HuffTree::CodeMap *huffcodes = hufftree->generateHuffCodes();
 	
 	// display minimal codes on the screen
 	cout << "Huffcodes written to file: " << endl;
@@ -91,8 +91,8 @@ void unhuff(const string &infile, const string &outfile)
 {
 	// read the file header
 	ibstream bstream_in(infile);
-	AsciiHuffPtr hufftree = AsciiHuff::readFileHeader(bstream_in);
-	AsciiHuff::CodeMap *huffcodes = hufftree->generateHuffCodes();
+	HuffPtr hufftree = HuffTree::readFileHeader(bstream_in);
+	HuffTree::CodeMap *huffcodes = hufftree->generateHuffCodes();
 
 
 	// display the huffman codes retrieved from the file header
@@ -130,12 +130,12 @@ AsciiMap* fileHistogram(const string &filename)
 	return amap;
 }
 
-AsciiHuffPtr asciiMap2Huff(const AsciiMap &amap)
+HuffPtr asciiMap2Huff(const AsciiMap &amap)
 {	
-	typedef	priority_queue<AsciiHuffPtr, vector<AsciiHuffPtr>, AsciiHuffPtrComparer> AsciiHuffPQ;
+	typedef	priority_queue<HuffPtr, vector<HuffPtr>, HuffPtrComparer> HuffPtrPQ;
 
-	AsciiHuffPQ apq;
-	AsciiHuffPtr result = NULL;
+	HuffPtrPQ huff_pq;
+	HuffPtr result = NULL;
 	
 	// create the initial "forest" of single-node trees
 	auto begin = amap.begin(); auto end = amap.end();
@@ -145,7 +145,7 @@ AsciiHuffPtr asciiMap2Huff(const AsciiMap &amap)
 		int val = it->first;
 
 		// store a pointer to each tree in the priority queue
-		apq.push(new AsciiHuff(key, val));
+		huff_pq.push(new HuffTree(key, val));
 	}
 	
 	// build a minimal encoding tree using Huffman's algorithm:
@@ -153,29 +153,29 @@ AsciiHuffPtr asciiMap2Huff(const AsciiMap &amap)
 	//		pop off the two trees with the minimum keys
 	//		merge them together, with the root being the sum of the keys
 	//		put the new tree back into the queue.
-	while (apq.size() > 1)
+	while (huff_pq.size() > 1)
 	{
-		auto u = apq.top();
-		apq.pop();
+		auto u = huff_pq.top();
+		huff_pq.pop();
 		
-		auto v = apq.top();
-		apq.pop();
+		auto v = huff_pq.top();
+		huff_pq.pop();
 		
 		auto z = join(*u, *v);
-		apq.push(z);
+		huff_pq.push(z);
 		
 		delete u;
 		delete v;
 	}
 
 	// the last item in the queue is the final huffman tree
-	if (apq.size() == 1)
-		result = apq.top();
+	if (huff_pq.size() == 1)
+		result = huff_pq.top();
 
 	return result;
 }
 
-string code2str(const AsciiHuff::CodePair &cp)
+string code2str(const HuffTree::CodePair &cp)
 {
 	int length = cp.first;
 	int code = cp.second;

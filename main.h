@@ -13,9 +13,8 @@
 using namespace std;
 
 // Convenience types
-typedef		HuffTree<unsigned, unsigned>	AsciiHuff;
-typedef		AsciiHuff*						AsciiHuffPtr;
-typedef		map<unsigned, unsigned>			AsciiMap;
+typedef		HuffTree*		HuffPtr;
+typedef		map<int, int>	AsciiMap;
 
 // Primary functions used for compressing/decompressing files
 void huff(const string &infile);
@@ -23,22 +22,22 @@ void unhuff(const string &infile, const string &outfile);
 
 // Intermediate functions for building the Huffman Tree
 AsciiMap* fileHistogram(const string &filename);
-AsciiHuffPtr asciiMap2Huff(const AsciiMap &amap);
-string code2str(const AsciiHuff::CodePair &cp);
+HuffPtr asciiMap2Huff(const AsciiMap &amap);
+string code2str(const HuffTree::CodePair &cp);
 
-// Comparison class for putting AsciiHuffPtrs into a priority queue
-class AsciiHuffPtrComparer
+// Comparison class for putting HuffPtrs into a priority queue
+class HuffPtrComparer
 {
 private:
 	bool reverse;
 
 public:
-	AsciiHuffPtrComparer(const bool &rev = false) 
+	HuffPtrComparer(const bool &rev = false) 
 		: reverse(rev) 
 	{
 	}
 
-	bool operator()(const AsciiHuffPtr &lhs, const AsciiHuffPtr &rhs)
+	bool operator()(const HuffPtr &lhs, const HuffPtr &rhs)
 	{
 		// if reverse = false, we get a min priority queue, else it's a max priority queue
 		return reverse ? 

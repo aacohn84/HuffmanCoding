@@ -65,6 +65,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bitops.cpp" />
+    <ClCompile Include="hufftree.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="prompt.cpp" />
   </ItemGroup>

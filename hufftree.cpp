@@ -1,9 +1,24 @@
-#pragma once
-#ifndef _HUFFTREE_CPP
-#define _HUFFTREE_CPP
+#include "hufftree.h"
 
-template <class Key, class Value>
-typename HuffTree<Key, Value>::TreeNode* HuffTree<Key, Value>::TreeNode::copy(TreeNode *src)
+using namespace std;
+
+HuffTree::TreeNode::TreeNode(int k, int v)
+	: key(k), value(v), left(NULL), right(NULL)
+{
+}
+
+HuffTree::TreeNode::TreeNode(int k, int v, TreeNode *left, TreeNode *right)
+	: key(k), value(v), left(left), right(right)
+{
+}
+
+HuffTree::TreeNode* HuffTree::TreeNode::copy()
+{
+	// return a deep copy of the current tree
+	return copy(this);
+}
+
+HuffTree::TreeNode* HuffTree::TreeNode::copy(TreeNode *src)
 {
 	if (src)
 	{
@@ -14,26 +29,38 @@ typename HuffTree<Key, Value>::TreeNode* HuffTree<Key, Value>::TreeNode::copy(Tr
 	return NULL;
 }
 
-template <class Key, class Value>
-HuffTree<Key, Value>::HuffTree(Key root_key, Value root_value)
+HuffTree::HuffTree(int root_key, int root_value)
 	: root(new TreeNode(root_key, root_value))
 {
 }
 
-template <class Key, class Value>
-HuffTree<Key, Value>::HuffTree()
+HuffTree::HuffTree()
 {
 	root = NULL;
 }
 
-template <class Key, class Value>
-Key HuffTree<Key, Value>::rootkey() const
+int HuffTree::rootkey() const
 {
 	return root->key;
 }
 
-template <class Key, class Value>
-typename HuffTree<Key, Value>::CodeMap* HuffTree<Key, Value>::generateHuffCodes()
+bool HuffTree::compress(string fileToCompress, string outputFileName)
+{
+	ifstream infile(fileToCompress.c_str());
+	obstream outfile;
+
+	if (!infile)
+		return false;
+
+	return true;
+}
+
+bool decompress(string fileToDecompress, string outputFileName)
+{
+	return true;
+}
+
+HuffTree::CodeMap* HuffTree::generateHuffCodes()
 {
 	CodeMap *huffcodes = NULL;
 	if (root)
@@ -42,12 +69,9 @@ typename HuffTree<Key, Value>::CodeMap* HuffTree<Key, Value>::generateHuffCodes(
 		generateHuffCodes(root, *huffcodes, 0, 0);
 	}
 	return huffcodes;
-	/* TODO: instead of storing the codes as strings, store them as <length, code> pairs
-		then when we do stream output, we can say writebits(length, code) */
 }
 
-template <class Key, class Value>
-void HuffTree<Key, Value>::generateHuffCodes(TreeNode *root, CodeMap &huffcodes, int length, unsigned code)
+void HuffTree::generateHuffCodes(TreeNode *root, CodeMap &huffcodes, int length, int code)
 {
 	if (root)
 	{
@@ -60,16 +84,14 @@ void HuffTree<Key, Value>::generateHuffCodes(TreeNode *root, CodeMap &huffcodes,
 	}
 }
 
-template <class Key, class Value>
-void HuffTree<Key, Value>::writeFileHeader(obstream &outstream)
+
+void HuffTree::writeFileHeader(obstream &outstream)
 {
 	if (root)
 		writeFileHeader(root, outstream);
 }
 
-// this method only works on the AsciiHuff variant of HuffTree
-template <class Key, class Value>
-void HuffTree<Key, Value>::writeFileHeader(TreeNode *root, obstream &outstream)
+void HuffTree::writeFileHeader(TreeNode *root, obstream &outstream)
 {
 	if (root->left == NULL && root->right == NULL) // is it a leaf?
 	{ // yes, write a 1 and the 9-bit Ascii+ value
@@ -86,16 +108,14 @@ void HuffTree<Key, Value>::writeFileHeader(TreeNode *root, obstream &outstream)
 	}
 }
 
-template <class Key, class Value>
-HuffTree<Key, Value>* HuffTree<Key, Value>::readFileHeader(ibstream &instream)
+HuffTree* HuffTree::readFileHeader(ibstream &instream)
 {
 	HuffTree *ht = new HuffTree();
 	ht->root = readFileHeaderHelper(instream);
 	return ht;
 }
 
-template <class Key, class Value>
-typename HuffTree<Key, Value>::TreeNode* HuffTree<Key, Value>::readFileHeaderHelper(ibstream &instream)
+HuffTree::TreeNode* HuffTree::readFileHeaderHelper(ibstream &instream)
 {
 	// read a 1 bit value
 	int inbits;
@@ -114,12 +134,10 @@ typename HuffTree<Key, Value>::TreeNode* HuffTree<Key, Value>::readFileHeaderHel
 	}
 }
 
-template <class Key, class Value>
-void HuffTree<Key, Value>::readFileBody(ibstream &instream, std::ofstream &outstream)
+void HuffTree::readFileBody(ibstream &instream, std::ofstream &outstream)
 {
 	using namespace std;
 
-	string output_string;
 	bool hitEOF = false;
 	while (!hitEOF)
 	{
@@ -136,31 +154,34 @@ void HuffTree<Key, Value>::readFileBody(ibstream &instream, std::ofstream &outst
 		if (it->value == 257) 
 			hitEOF = true;
 		else
-		{
 			outstream.put(char(it->value));
-			output_string += char(it->value);
-		}
 	}
 }
 
-template <class Key, class Value>
-HuffTree<Key, Value>::~HuffTree()
+HuffTree::~HuffTree()
 {
 	deleteTree(root);
 }
 
-template <class Key, class Value>
-HuffTree<Key, Value>* join(const HuffTree<Key, Value> &ht1, const HuffTree<Key, Value> &ht2)
+void HuffTree::deleteTree(TreeNode *root)
 {
-	Key key;
-	HuffTree<Key, Value> *ht_sum;
+	if (root)
+	{
+		deleteTree(root->left);
+		deleteTree(root->right);
+		delete root;
+	}
+}
+
+HuffTree* join(const HuffTree &ht1, const HuffTree &ht2)
+{
+	int key;
+	HuffTree *ht_sum;
 		
 	key = ht1.root->key + ht2.root->key;
-	ht_sum = new HuffTree<Key, Value>(key, Value(0));
+	ht_sum = new HuffTree(key, int(0));
 	ht_sum->root->left = ht1.root->copy();
 	ht_sum->root->right = ht2.root->copy();
 
 	return ht_sum;
 }
-
-#endif
