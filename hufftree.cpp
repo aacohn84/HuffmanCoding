@@ -1,33 +1,23 @@
+/*
+	Created on 3/3/2013
+
+	Author: Aaron Cohn
+
+	Summary: Implementation of class HuffTree, minus HuffTree::TreeNode. 
+	TreeNode is implemented in HuffTreeNode.cpp.
+*/
+
 #include "hufftree.h"
+#include "HuffPtrComparer.h"
+#include <queue>
+#include "bitops.h"
+#include "globals.h"
 
 using namespace std;
 
-HuffTree::TreeNode::TreeNode(int k, int v)
-	: key(k), value(v), left(NULL), right(NULL)
-{
-}
-
-HuffTree::TreeNode::TreeNode(int k, int v, TreeNode *left, TreeNode *right)
-	: key(k), value(v), left(left), right(right)
-{
-}
-
-HuffTree::TreeNode* HuffTree::TreeNode::copy()
-{
-	// return a deep copy of the current tree
-	return copy(this);
-}
-
-HuffTree::TreeNode* HuffTree::TreeNode::copy(TreeNode *src)
-{
-	if (src)
-	{
-		TreeNode *left = copy(src->left);
-		TreeNode *right = copy(src->right);
-		return new TreeNode(src->key, src->value, left, right);
-	}
-	return NULL;
-}
+// Intermediate functions for building the Huffman Tree
+Histogram* fileHistogram(ifstream &infile);
+string code2str(const HuffTree::CodePair &cp);
 
 HuffTree::HuffTree(int root_key, int root_value)
 	: root(new TreeNode(root_key, root_value))
@@ -44,23 +34,46 @@ int HuffTree::rootkey() const
 	return root->key;
 }
 
-bool HuffTree::compress(string fileToCompress, string outputFileName)
+/* Compresses srcFile into destFile */
+bool HuffTree::huff(const string &srcFileName, const string &destFileName)
 {
-	ifstream infile(fileToCompress.c_str());
-	obstream outfile;
+	ifstream infile(srcFileName.c_str());
+	obstream outfile(destFileName);
 
 	if (!infile)
 		return false;
 
+	Histogram *hist = fileHistogram(infile);
+	HuffPtr hufftree = buildHuffTree(*hist);
+
+	hufftree->writeFileHeader(outfile);
+	
+	// reset the input stream
+	infile.clear();
+	infile.seekg(infile.beg);
+
+	hufftree->compressFile(infile, outfile);
+
+	infile.close();
+	outfile.close();
+
 	return true;
 }
 
-bool decompress(string fileToDecompress, string outputFileName)
+/* Uncompresses srcFile into destFile */
+bool HuffTree::unhuff(const string &srcFileName, const string &destFileName)
 {
+	ibstream infile(srcFileName);
+	ofstream outfile(destFileName);
+
+	HuffPtr hufftree = HuffTree::treeFromHeader(infile);
+	hufftree->decompressFile(infile, outfile);
+
 	return true;
 }
 
-HuffTree::CodeMap* HuffTree::generateHuffCodes()
+/* Generates huffman codes from tree */
+HuffTree::CodeMap* HuffTree::generateHuffCodes() const
 {
 	CodeMap *huffcodes = NULL;
 	if (root)
@@ -71,70 +84,100 @@ HuffTree::CodeMap* HuffTree::generateHuffCodes()
 	return huffcodes;
 }
 
-void HuffTree::generateHuffCodes(TreeNode *root, CodeMap &huffcodes, int length, int code)
+/* Traverses Huffman Tree recursively to generate minimal encodings */
+void HuffTree::generateHuffCodes(TreeNode *root, CodeMap &huffcodes, int length, int code) const
 {
 	if (root)
 	{
-		// do a depth-first search of the tree, building the code string along the way
+		// search for leaf, building code string along the way
 		generateHuffCodes(root->left, huffcodes, length + 1, code << 1);
 		generateHuffCodes(root->right, huffcodes, length + 1, (code << 1) | 1);
 
+		// leaf found, huffman code complete
 		if (root->left == NULL && root->right == NULL)
 			huffcodes[root->value] = CodePair(length, code);
 	}
 }
 
-
-void HuffTree::writeFileHeader(obstream &outstream)
+/* Stores copy of tree in file header */
+void HuffTree::writeFileHeader(obstream &outfile) const
 {
 	if (root)
-		writeFileHeader(root, outstream);
+		writeFileHeader(root, outfile);
 }
 
-void HuffTree::writeFileHeader(TreeNode *root, obstream &outstream)
+/* Copies tree to file using recursive pre-order traversal */
+void HuffTree::writeFileHeader(TreeNode *root, obstream &outfile) const
 {
-	if (root->left == NULL && root->right == NULL) // is it a leaf?
-	{ // yes, write a 1 and the 9-bit Ascii+ value
-		outstream.writebits(1, 1);
-		outstream.writebits(9, int(root->value));
+	if (root->left == NULL && root->right == NULL)
+	{	// leaf, write 1 and 9-bit (Ascii+1) value
+		outfile.writebits(1, 1);
+		outfile.writebits(9, int(root->value));
 	}
 	else
-	{	// it's an internal node, write a zero
-		outstream.writebits(1, 0);
+	{	// internal node, write zero
+		outfile.writebits(1, 0);
 			
-		// internal nodes necessarily have 2 children -- write a header for each
-		writeFileHeader(root->left, outstream);
-		writeFileHeader(root->right, outstream);
+		// internal nodes necessarily have 2 children -- write header for each
+		writeFileHeader(root->left, outfile);
+		writeFileHeader(root->right, outfile);
 	}
 }
 
-HuffTree* HuffTree::readFileHeader(ibstream &instream)
+/* Compresses infile into outfile one char at a time using huffman codes */
+void HuffTree::compressFile(ifstream &infile, obstream &outfile) const
 {
-	HuffTree *ht = new HuffTree();
-	ht->root = readFileHeaderHelper(instream);
+	CodeMap *huffcodes = generateHuffCodes();
+
+	if (infile)
+	{
+		char ch;
+		CodePair codepair;
+		int length, code;
+		while (infile.get(ch))
+		{	// write the huffcode for each character in the file
+			codepair = (*huffcodes)[ch];
+			length = codepair.first;
+			code = codepair.second;
+			outfile.writebits(length, code);
+		}
+		codepair = (*huffcodes)[PSEUDO_EOF];
+		length = codepair.first;
+		code = codepair.second;
+		outfile.writebits(length, code);
+	}
+}
+
+/* Creates huffman tree from header of huffed file */
+HuffPtr HuffTree::treeFromHeader(ibstream &infile)
+{
+	HuffPtr ht = new HuffTree();
+	ht->root = treeFromHeaderHelper(infile);
 	return ht;
 }
 
-HuffTree::TreeNode* HuffTree::readFileHeaderHelper(ibstream &instream)
+/* Recursively builds Huffman Tree from pre-order traversal in file header */
+HuffTree::TreeNode* HuffTree::treeFromHeaderHelper(ibstream &infile)
 {
 	// read a 1 bit value
 	int inbits;
-	instream.readbits(1, inbits);
+	infile.readbits(1, inbits);
 	if (inbits) // if a 1 is read, build a leaf node
 	{
-		instream.readbits(9, inbits);	// read a 9 bit value 
+		infile.readbits(9, inbits);	// read a 9 bit value 
 		return new TreeNode(0, inbits); // store it in a new node and return its address
 	}
 	else
 	{ // create an internal node -- this node necessarily has 2 children
-		TreeNode *left = readFileHeaderHelper(instream); 
-		TreeNode *right = readFileHeaderHelper(instream);
+		TreeNode *left = treeFromHeaderHelper(infile); 
+		TreeNode *right = treeFromHeaderHelper(infile);
 
 		return new TreeNode(0, 0, left, right);
 	}
 }
 
-void HuffTree::readFileBody(ibstream &instream, std::ofstream &outstream)
+/* Decompresses infile into outfile by traversing tree while reading codes */
+void HuffTree::decompressFile(ibstream &infile, std::ofstream &outfile) const
 {
 	using namespace std;
 
@@ -143,18 +186,18 @@ void HuffTree::readFileBody(ibstream &instream, std::ofstream &outstream)
 	{
 		int inbit;
 		TreeNode *it = root;
-		while (it->left != NULL && it->right != NULL)
-		{
-			instream.readbits(1, inbit);
+		while (it->left != NULL && it->right != NULL) // while child not reached
+		{	// read bit, traverse tree
+			infile.readbits(1, inbit);
 			if (inbit == 0)
 				it = it->left;
 			else
 				it = it->right;
 		}
-		if (it->value == 257) 
+		if (it->value == PSEUDO_EOF) 
 			hitEOF = true;
 		else
-			outstream.put(char(it->value));
+			outfile.put(char(it->value));
 	}
 }
 
@@ -173,15 +216,99 @@ void HuffTree::deleteTree(TreeNode *root)
 	}
 }
 
-HuffTree* join(const HuffTree &ht1, const HuffTree &ht2)
+/*	Merges two trees by forming a new root node with ht1 as the left child and
+	ht2 as the right child. */
+HuffPtr HuffTree::join(const HuffTree &ht1, const HuffTree &ht2)
 {
 	int key;
-	HuffTree *ht_sum;
-		
-	key = ht1.root->key + ht2.root->key;
-	ht_sum = new HuffTree(key, int(0));
+	HuffPtr ht_sum;
+
+	key = ht1.rootkey() + ht2.rootkey();
+	ht_sum = new HuffTree(key, 0);
+
+	// do the merge with copies of the trees
 	ht_sum->root->left = ht1.root->copy();
 	ht_sum->root->right = ht2.root->copy();
 
 	return ht_sum;
+}
+
+/* Creates mapping of characters to frequencies (histogram) */
+Histogram* fileHistogram(ifstream &infile)
+{
+	Histogram *hist = NULL;
+	char ch;
+
+	if (infile)
+	{
+		hist = new Histogram;
+		while (infile.get(ch))
+			(*hist)[ch] += 1;
+
+		(*hist)[PSEUDO_EOF] = 1;
+	}
+	return hist;
+}
+
+HuffPtr HuffTree::buildHuffTree(const Histogram &hist)
+{	
+	typedef	priority_queue<HuffPtr, vector<HuffPtr>, HuffPtrComparer> HuffPtrPQ;
+
+	HuffPtrPQ huff_pq;
+	HuffPtr result = NULL;
+	
+	// create the initial "forest" of single-node trees
+	auto begin = hist.begin(); auto end = hist.end();
+	for (auto it = begin; it != end; it++)
+	{
+		int key = it->second;
+		int val = it->first;
+
+		// store a pointer to each tree in the priority queue
+		huff_pq.push(new HuffTree(key, val));
+	}
+	
+	// build a minimal encoding tree using Huffman's algorithm:
+	// Repeat until 1 tree remains in the queue:
+	//		pop off the two trees with the minimum keys
+	//		merge them together, with the root being the sum of the keys
+	//		put the new tree back into the queue.
+	while (huff_pq.size() > 1)
+	{
+		auto u = huff_pq.top();
+		huff_pq.pop();
+		
+		auto v = huff_pq.top();
+		huff_pq.pop();
+		
+		auto z = HuffTree::join(*u, *v);
+		huff_pq.push(z);
+		
+		delete u;
+		delete v;
+	}
+
+	// the last item in the queue is the final huffman tree
+	if (huff_pq.size() == 1)
+		result = huff_pq.top();
+
+	return result;
+}
+
+string code2str(const HuffTree::CodePair &cp)
+{
+	int length = cp.first;
+	int code = cp.second;
+	string codestr;
+	
+	for (int i = 0; i < length; i++)
+	{
+		if (code & 1) // is right-most bit a 1?
+			codestr = "1" + codestr;
+		else
+			codestr = "0" + codestr;
+		code = code >> 1;
+	}
+
+	return codestr;
 }

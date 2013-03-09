@@ -13,6 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0DA1F472-851D-45A5-8252-32A7756DD362}</ProjectGuid>
     <RootNamespace>HuffmanCoding</RootNamespace>
+    <ProjectName>Huff</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -47,7 +48,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Program Files %28x86%29\boost\boost_1_52_0\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files %28x86%29\boost\boost_1_52_0\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -65,15 +66,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bitops.cpp" />
+    <ClCompile Include="CommandParser.cpp" />
     <ClCompile Include="hufftree.cpp" />
+    <ClCompile Include="HuffTreeNode.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="prompt.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bitops.h" />
+    <ClInclude Include="CommandParser.h" />
     <ClInclude Include="globals.h" />
+    <ClInclude Include="HuffPtrComparer.h" />
     <ClInclude Include="hufftree.h" />
-    <ClInclude Include="main.h" />
     <ClInclude Include="prompt.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

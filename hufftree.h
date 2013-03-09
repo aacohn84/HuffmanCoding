@@ -14,7 +14,17 @@
 #include <map>
 #include <utility>	// std::pair -- used for internal types CodePair, CodeMap
 #include <fstream>
-#include "bitops.h"	// for reading/writing i/o streams in a bits-at-a-time fashion
+
+// forward declarations from bitops.h
+class obstream;
+class ibstream;
+
+// forward delcaration for HuffPtr
+class HuffTree;
+
+// convenient types for external use
+typedef		std::map<int, int>	Histogram;
+typedef		HuffTree*			HuffPtr;
 
 class HuffTree
 {
@@ -28,12 +38,16 @@ private:
 		TreeNode *left;
 		TreeNode *right;
 		
+		// constructors
 		TreeNode(int k, int v);
 		TreeNode(int k, int v, TreeNode *left, TreeNode *right);
-		TreeNode* copy();
+
+		// const methods
+		TreeNode* copy() const;
 
 	private:
-		TreeNode* copy(TreeNode *src);
+		// static methods
+		static TreeNode* copy(const TreeNode *src);
 	};
 
 // ----- Huffman Tree ---- //
@@ -48,28 +62,28 @@ public:
 	// accessors
 	int rootkey() const;
 
-	friend HuffTree* join(const HuffTree &ht1, const HuffTree &ht2);
-
-	// convenient types
-	typedef std::pair<int, int> CodePair;
-	typedef	std::map<int, CodePair> CodeMap;
+	// convenient types for internal use
+	typedef		std::pair<int, int>			CodePair;
+	typedef		std::map<int, CodePair>		CodeMap;
 
 	// Public interface for compressing / decompressing files
-	bool compress(std::string fileToCompress, std::string outputFileName);
-	bool decompress(std::string fileToDecompress, std::string outputFileName);
-
-	CodeMap* generateHuffCodes();
-	void writeFileHeader(obstream &outstream);
-	static HuffTree* readFileHeader(ibstream &instream);
-	void readFileBody(ibstream &instream, std::ofstream &outstream);
+	static bool huff(const std::string &srcFileName, const std::string &destFileName);
+	static bool unhuff(const std::string &srcFileName, const std::string &destFileName);
 
 private:
 	// Internal methods -- not part of the public interface
 	HuffTree();
-	void generateHuffCodes(TreeNode *root, CodeMap &huffcodes, int length, int code);
-	void writeFileHeader(TreeNode *root, obstream &outstream); 
-	static TreeNode* readFileHeaderHelper(ibstream &instream);
+	CodeMap* generateHuffCodes() const;
+	void generateHuffCodes(TreeNode *root, CodeMap &huffcodes, int length, int code) const;
+	void writeFileHeader(obstream &outstream) const;
+	void writeFileHeader(TreeNode *root, obstream &outstream) const;
+	void compressFile(std::ifstream &infile, obstream &outfile) const;
+	void decompressFile(ibstream &instream, std::ofstream &outstream) const;
 	void deleteTree(TreeNode *root);
+	static HuffPtr join(const HuffTree &ht1, const HuffTree &ht2);
+	static HuffPtr buildHuffTree(const Histogram &hist);
+	static HuffPtr treeFromHeader(ibstream &instream);
+	static TreeNode* treeFromHeaderHelper(ibstream &instream);
 };
 
 #endif
