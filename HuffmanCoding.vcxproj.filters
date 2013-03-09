@@ -21,16 +21,13 @@
     <ClCompile Include="bitops.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="hufftree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HuffTreeNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CommandParser.cpp">
+    <ClCompile Include="main_huff.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -48,9 +45,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HuffPtrComparer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CommandParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

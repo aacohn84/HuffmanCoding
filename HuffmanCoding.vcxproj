@@ -66,15 +66,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bitops.cpp" />
-    <ClCompile Include="CommandParser.cpp" />
     <ClCompile Include="hufftree.cpp" />
     <ClCompile Include="HuffTreeNode.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="main_huff.cpp" />
     <ClCompile Include="prompt.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bitops.h" />
-    <ClInclude Include="CommandParser.h" />
     <ClInclude Include="globals.h" />
     <ClInclude Include="HuffPtrComparer.h" />
     <ClInclude Include="hufftree.h" />
